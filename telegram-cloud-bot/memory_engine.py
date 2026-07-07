@@ -1,17 +1,31 @@
 import os
 import glob
 import chromadb
-import google.generativeai as genai
+from google import genai
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
+
+# Initialize the Genai client globally
+_genai_client = None
+
+def get_genai_client():
+    global _genai_client
+    if _genai_client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key:
+            _genai_client = genai.Client(api_key=api_key)
+    return _genai_client
 
 class GeminiEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input: Documents) -> Embeddings:
-        model = 'models/text-embedding-004'
-        title = "Memory Embedding"
-        return [genai.embed_content(model=model,
-                                    content=doc,
-                                    task_type="retrieval_document",
-                                    title=title)["embedding"] for doc in input]
+        client = get_genai_client()
+        results = []
+        for doc in input:
+            response = client.models.embed_content(
+                model='gemini-embedding-001',
+                contents=doc
+            )
+            results.append(response.embeddings[0].values)
+        return results
 
 class MemoryEngine:
     def __init__(self):
@@ -20,10 +34,10 @@ class MemoryEngine:
         self.collection = None
         self.is_ready = False
         self.last_error = "None"
+        self.genai_client = None
         
         if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash')
+            self.genai_client = genai.Client(api_key=self.api_key)
         else:
             self.last_error = "GEMINI_API_KEY is not set in environment."
             print("WARNING: GEMINI_API_KEY is not set. Cloud offline mode will not work.")
@@ -52,7 +66,7 @@ class MemoryEngine:
 
             memory_files = glob.glob('memory/**/*.md', recursive=True)
             if not memory_files:
-                self.last_error = f"No memory files found in 'memory/**/*.md'. CWD: {os.getcwd()}"
+                self.last_error = f"No memory files found. CWD: {os.getcwd()}"
                 print(self.last_error)
                 return
 
@@ -117,9 +131,12 @@ Context:
 User Question:
 {question}
 """
-            response = self.model.generate_content(prompt)
+            response = self.genai_client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt
+            )
             return f"[Cloud Mode] {response.text}"
             
         except Exception as e:
             print(f"Error generating answer: {e}")
-            return f"[Cloud Mode ERROR] An error occurred while accessing memory: {e}"
+            return f"[Cloud Mode ERROR] An error occurred: {e}"

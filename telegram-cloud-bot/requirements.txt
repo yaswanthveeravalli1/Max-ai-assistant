@@ -3,4 +3,4 @@ uvicorn[standard]
 httpx
 websockets
 chromadb
-google-generativeai
+google-genai
