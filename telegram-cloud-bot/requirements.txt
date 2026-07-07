@@ -4,3 +4,4 @@ httpx
 websockets
 chromadb
 google-genai
+onnxruntime
