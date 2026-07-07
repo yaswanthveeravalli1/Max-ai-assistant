@@ -2,8 +2,10 @@ import os
 import asyncio
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from memory_engine import MemoryEngine
 
 app = FastAPI()
+memory_engine = MemoryEngine()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -52,8 +54,10 @@ async def poll_telegram():
                                             # Forward to Android app via WebSocket
                                             await active_connection.send_text(text)
                                         else:
-                                            # App is offline
-                                            await send_telegram_message(chat_id, "MAX is currently offline (phone disconnected). Please check the phone's internet.")
+                                            # App is offline, use Cloud Mode (Memory + Gemini)
+                                            print("App offline. Generating Cloud Mode response...")
+                                            offline_reply = memory_engine.answer_question(text)
+                                            await send_telegram_message(chat_id, offline_reply)
                                     else:
                                         print(f"Unauthorized access attempt from Chat ID: {chat_id}")
                                         await send_telegram_message(chat_id, f"Unauthorized! Your Chat ID is: {chat_id}\n\nPlease enter this exact Chat ID in the MAX app settings to gain access.")
@@ -71,6 +75,8 @@ async def poll_telegram():
 
 @app.on_event("startup")
 async def startup_event():
+    # Build memory index in the background so it doesn't block startup
+    asyncio.create_task(asyncio.to_thread(memory_engine.build_index))
     asyncio.create_task(poll_telegram())
 
 @app.get("/")
