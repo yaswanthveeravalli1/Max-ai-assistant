@@ -1,7 +1,7 @@
 import os
 import asyncio
 import httpx
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 
 app = FastAPI()
 
@@ -78,9 +78,13 @@ async def root():
     return {"status": "MAX Telegram Cloud Bot is running."}
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, secret: str = None):
+async def websocket_endpoint(websocket: WebSocket, secret: str = Query(default=None)):
     global active_connection
+    
+    print(f"WebSocket connection attempt. Secret provided: {secret is not None}")
+    
     if secret != APP_SECRET:
+        print(f"Invalid secret! Expected '{APP_SECRET}', got '{secret}'")
         await websocket.close(code=1008, reason="Invalid Secret Key")
         return
         
@@ -104,5 +108,9 @@ async def websocket_endpoint(websocket: WebSocket, secret: str = None):
                 await send_telegram_message(TELEGRAM_CHAT_ID, data)
     except WebSocketDisconnect:
         print("MAX App Disconnected.")
+        if active_connection == websocket:
+            active_connection = None
+    except Exception as e:
+        print(f"WebSocket error: {e}")
         if active_connection == websocket:
             active_connection = None
