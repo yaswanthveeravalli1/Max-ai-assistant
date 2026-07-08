@@ -86,7 +86,7 @@ class CloudSocketManager(private val context: Context) {
                         put("user_id", "default_user")
                         put("device_id", "android_device")
                         put("auth_token", settings.cloudAppSecret)
-                        put("capabilities", JSONArray(listOf("flashlight", "calls", "whatsapp", "accessibility", "tts")))
+                        put("capabilities", JSONArray(listOf("flashlight", "calls", "whatsapp", "accessibility", "tts", "reminders", "system_navigation", "wifi")))
                     }
                     webSocket.send(handshake.toString())
                 }

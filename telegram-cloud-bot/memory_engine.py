@@ -291,6 +291,10 @@ Available Action IDs (if ACTION):
 - SEND_MESSAGE (params: {{"contact": "...", "message": "..."}})
 - CALL_PHONE (params: {{"contact": "..."}})
 - OPEN_APP (params: {{"appName": "..."}})
+- SET_REMINDER (params: {{"message": "...", "triggerAtMillis": 123456789}})
+- SYSTEM_ACTION (params: {{"action": "SCREENSHOT"}})
+- PERFORM_HOME (no params)
+- PERFORM_BACK (no params)
 
 Context from long-term memory:
 {context}
