@@ -51,8 +51,18 @@ async def poll_telegram():
                                     if chat_id == TELEGRAM_CHAT_ID:
                                         print(f"Received from Telegram: {text}")
                                         if active_connection:
-                                            # Forward to Android app via WebSocket
-                                            await active_connection.send_text(text)
+                                            try:
+                                                # Forward to Android app via WebSocket
+                                                await active_connection.send_text(text)
+                                            except Exception as ws_err:
+                                                # Phone disconnected but we didn't detect it yet
+                                                print(f"Phone connection stale, clearing: {ws_err}")
+                                                active_connection = None
+                                                # Fall back to Cloud Mode
+                                                print("Falling back to Cloud Mode...")
+                                                offline_reply = await asyncio.to_thread(memory_engine.answer_question, text)
+                                                print(f"Cloud Mode reply: {offline_reply[:100]}...")
+                                                await send_telegram_message(chat_id, offline_reply)
                                         else:
                                             # App is offline, use Cloud Mode (Memory + Gemini)
                                             print("App offline. Generating Cloud Mode response...")
