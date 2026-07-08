@@ -2,6 +2,7 @@ import os
 import glob
 import httpx
 from google import genai
+from google.genai import types
 from supabase import create_client, Client
 
 
@@ -50,7 +51,8 @@ class MemoryEngine:
         """Generate embedding for a single text using Gemini text-embedding-004."""
         result = self.gemini_client.models.embed_content(
             model='gemini-embedding-001',
-            contents=text
+            contents=text,
+            config=types.EmbedContentConfig(output_dimensionality=768)
         )
         return result.embeddings[0].values
 
@@ -65,7 +67,8 @@ class MemoryEngine:
             print(f"  Embedding batch {batch_num}/{total_batches} ({len(batch)} texts)...")
             result = self.gemini_client.models.embed_content(
                 model='gemini-embedding-001',
-                contents=batch
+                contents=batch,
+                config=types.EmbedContentConfig(output_dimensionality=768)
             )
             for emb in result.embeddings:
                 all_embeddings.append(emb.values)
