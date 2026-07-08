@@ -2,6 +2,5 @@ fastapi
 uvicorn[standard]
 httpx
 websockets
-chromadb
 google-genai
-onnxruntime
+supabase
