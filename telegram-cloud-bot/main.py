@@ -264,24 +264,30 @@ async def websocket_endpoint(websocket: WebSocket, secret: str = Query(default=N
                     preferred_model = payload.get("payload", {}).get("preferred_model")
                     if preferred_model and current_user_id:
                         if preferred_model in {"gemini", "groq", "openrouter", "cohere"}:
-                            memory_engine.supabase.table("user_settings").upsert({
-                                "user_id": current_user_id,
-                                "preferred_model": preferred_model
-                            }).execute()
-                            print(f"Updated preferred model for {current_user_id} to {preferred_model}")
-                            telegram_chat = active_connections.get(current_user_id, {}).get("telegram")
-                            if telegram_chat:
-                                asyncio.create_task(send_telegram_message(telegram_chat, f"[Cloud Brain] Model switched to {preferred_model.capitalize()} from Android app."))
+                            try:
+                                memory_engine.supabase.table("user_settings").upsert({
+                                    "user_id": current_user_id,
+                                    "preferred_model": preferred_model
+                                }).execute()
+                                print(f"Updated preferred model for {current_user_id} to {preferred_model}")
+                                telegram_chat = active_connections.get(current_user_id, {}).get("telegram")
+                                if telegram_chat:
+                                    asyncio.create_task(send_telegram_message(telegram_chat, f"[Cloud Brain] Model switched to {preferred_model.capitalize()} from Android app."))
+                            except Exception as e:
+                                print(f"Error updating settings: {e}")
                 
                 elif msg_type == "get_settings":
                     if current_user_id:
-                        res = memory_engine.supabase.table("user_settings").select("preferred_model").eq("user_id", current_user_id).execute()
-                        active_model = res.data[0]["preferred_model"] if res.data else memory_engine.provider
-                        response = {
-                            "type": "settings_sync",
-                            "payload": {"preferred_model": active_model}
-                        }
-                        asyncio.create_task(websocket.send_text(json.dumps(response) if 'json' in globals() else import_json.dumps(response)))
+                        try:
+                            res = memory_engine.supabase.table("user_settings").select("preferred_model").eq("user_id", current_user_id).execute()
+                            active_model = res.data[0]["preferred_model"] if res.data else memory_engine.provider
+                            response = {
+                                "type": "settings_sync",
+                                "payload": {"preferred_model": active_model}
+                            }
+                            asyncio.create_task(websocket.send_text(json.dumps(response) if 'json' in globals() else import_json.dumps(response)))
+                        except Exception as e:
+                            print(f"Error fetching settings: {e}")
                                 
                 elif msg_type == "user_message":
                     text = payload.get("payload", {}).get("text", "")
