@@ -56,7 +56,8 @@ async def poll_telegram():
                                         else:
                                             # App is offline, use Cloud Mode (Memory + Gemini)
                                             print("App offline. Generating Cloud Mode response...")
-                                            offline_reply = memory_engine.answer_question(text)
+                                            offline_reply = await asyncio.to_thread(memory_engine.answer_question, text)
+                                            print(f"Cloud Mode reply: {offline_reply[:100]}...")
                                             await send_telegram_message(chat_id, offline_reply)
                                     else:
                                         print(f"Unauthorized access attempt from Chat ID: {chat_id}")
