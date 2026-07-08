@@ -104,8 +104,8 @@ class CloudSocketManager(private val context: Context) {
                                 JarvisCore.processServerResponse(context, replyText)
                             }
                         } else if (type == "action_request") {
-                            // TODO: Pass to ActionExecutor (Phase 2)
                             Log.d(TAG, "Received action_request: $text")
+                            com.example.automation.engine.ServerActionExecutor.execute(context, json)
                         } else {
                             Log.w(TAG, "Unknown message type: $type")
                         }
