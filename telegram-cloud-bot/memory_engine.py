@@ -49,7 +49,7 @@ class MemoryEngine:
     def _get_embedding(self, text: str) -> list:
         """Generate embedding for a single text using Gemini text-embedding-004."""
         result = self.gemini_client.models.embed_content(
-            model='text-embedding-004',
+            model='gemini-embedding-001',
             contents=text
         )
         return result.embeddings[0].values
