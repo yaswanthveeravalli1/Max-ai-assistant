@@ -99,9 +99,9 @@ class CloudSocketManager(private val context: Context) {
                         
                         if (type == "final_response") {
                             val payload = json.optJSONObject("payload")
-                            val replyText = payload?.optString("text") ?: ""
-                            if (replyText.isNotEmpty()) {
-                                JarvisCore.processServerResponse(context, replyText)
+                            val reply = payload?.optString("text", "") ?: json.optString("text", "")
+                            if (reply.isNotBlank()) {
+                                JarvisCore.processServerResponse(context, reply)
                             }
                         } else if (type == "action_request") {
                             Log.d(TAG, "Received action_request: $text")
