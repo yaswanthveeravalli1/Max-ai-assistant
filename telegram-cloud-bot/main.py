@@ -23,6 +23,7 @@ async def send_telegram_message(chat_id: str, text: str):
             print(f"Error sending message to Telegram: {e}")
 
 async def poll_telegram():
+    global active_connection
     if not TELEGRAM_BOT_TOKEN:
         print("No TELEGRAM_BOT_TOKEN provided. Polling disabled.")
         return
