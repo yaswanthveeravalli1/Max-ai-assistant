@@ -3,6 +3,8 @@ package com.example.core
 import android.content.Context
 import android.util.Log
 import com.example.ai.ConversationEngine
+import com.example.data.local.AppDatabase
+import com.example.data.local.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,6 +34,10 @@ object JarvisCore {
             try {
                 Log.d(TAG, "Processing command from $source: $text")
                 
+                // Save user message to UI database locally
+                val db = AppDatabase.getDatabase(context)
+                db.chatMessageDao().insertMessage(ChatMessage(sender = "user", text = text))
+                
                 if (useLocalFallbackBrain) {
                     ConversationEngine.process(context, text, source)
                 } else {
@@ -57,6 +63,10 @@ object JarvisCore {
     
     fun processServerResponse(context: Context, text: String) {
         CoroutineScope(Dispatchers.IO).launch {
+            // Save Jarvis response to UI database locally
+            val db = AppDatabase.getDatabase(context)
+            db.chatMessageDao().insertMessage(ChatMessage(sender = "jarvis", text = text))
+            
             emitResponse(JarvisResponse(text, InputSource.CHAT, false))
         }
     }
