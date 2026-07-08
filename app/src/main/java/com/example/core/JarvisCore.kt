@@ -27,8 +27,6 @@ object JarvisCore {
     private val _responses = MutableSharedFlow<JarvisResponse>()
     val responses = _responses.asSharedFlow()
 
-    private var useLocalFallbackBrain = false // Feature flag for Phase 2 migration
-
     fun processCommand(context: Context, text: String, source: InputSource) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -38,7 +36,8 @@ object JarvisCore {
                 val db = AppDatabase.getDatabase(context)
                 db.chatMessageDao().insertMessage(ChatMessage(sender = "user", text = text))
                 
-                if (useLocalFallbackBrain) {
+                val settings = com.example.data.preferences.SettingsManager(context)
+                if (settings.isLocalAiMode) {
                     ConversationEngine.process(context, text, source)
                 } else {
                     // Send to Cloud Brain
