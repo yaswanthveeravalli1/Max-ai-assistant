@@ -89,6 +89,11 @@ class CloudSocketManager(private val context: Context) {
                         put("capabilities", JSONArray(listOf("flashlight", "calls", "whatsapp", "accessibility", "tts", "reminders", "system_navigation", "wifi")))
                     }
                     webSocket.send(handshake.toString())
+                    
+                    val getSettings = JSONObject().apply {
+                        put("type", "get_settings")
+                    }
+                    webSocket.send(getSettings.toString())
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
@@ -106,6 +111,14 @@ class CloudSocketManager(private val context: Context) {
                         } else if (type == "action_request") {
                             Log.d(TAG, "Received action_request: $text")
                             com.example.automation.engine.ServerActionExecutor.execute(context, json)
+                        } else if (type == "settings_sync") {
+                            val payload = json.optJSONObject("payload")
+                            val model = payload?.optString("preferred_model")
+                            if (model != null) {
+                                val settings = SettingsManager(context)
+                                settings.cloudAiModel = model
+                                Log.d(TAG, "Synced preferred model from server: $model")
+                            }
                         } else {
                             Log.w(TAG, "Unknown message type: $type")
                         }
@@ -142,6 +155,16 @@ class CloudSocketManager(private val context: Context) {
                 connectWebSocket()
             }
         }
+    }
+
+    fun updateSettings(model: String) {
+        val json = JSONObject().apply {
+            put("type", "update_settings")
+            put("payload", JSONObject().apply {
+                put("preferred_model", model)
+            })
+        }
+        webSocket?.send(json.toString())
     }
 
     fun stop() {

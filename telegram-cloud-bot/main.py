@@ -151,12 +151,45 @@ async def poll_telegram():
                                 
                                 if text:
                                     if chat_id == TELEGRAM_CHAT_ID:
-                                        # Process through central brain
-                                        asyncio.create_task(process_message_from_client(
-                                            user_id=default_user_id,
-                                            client_type="telegram",
-                                            text=text
-                                        ))
+                                        if text.startswith("/status"):
+                                            try:
+                                                res = memory_engine.supabase.table("user_settings").select("preferred_model").eq("user_id", default_user_id).execute()
+                                                active_model = res.data[0]["preferred_model"] if res.data else memory_engine.provider
+                                                await send_telegram_message(chat_id, f"Current active model: {active_model.capitalize()}")
+                                            except Exception as e:
+                                                await send_telegram_message(chat_id, f"Error getting status: {e}")
+                                        elif text.startswith("/model "):
+                                            new_model = text.split(" ")[1].lower()
+                                            if new_model in {"gemini", "groq", "openrouter", "cohere"}:
+                                                try:
+                                                    memory_engine.supabase.table("user_settings").upsert({
+                                                        "user_id": default_user_id,
+                                                        "preferred_model": new_model
+                                                    }).execute()
+                                                    await send_telegram_message(chat_id, f"Model successfully switched to {new_model.capitalize()}.")
+                                                    android_ws = active_connections.get(default_user_id, {}).get("android")
+                                                    if android_ws:
+                                                        notice = {
+                                                            "type": "final_response",
+                                                            "request_id": "system_notice",
+                                                            "user_id": default_user_id,
+                                                            "payload": {
+                                                                "text": f"Model switched to {new_model.capitalize()} from Telegram.",
+                                                                "speak": False
+                                                            }
+                                                        }
+                                                        asyncio.create_task(android_ws.send_text(import_json.dumps(notice) if 'json' not in globals() else json.dumps(notice)))
+                                                except Exception as e:
+                                                    await send_telegram_message(chat_id, f"Error setting model: {e}")
+                                            else:
+                                                await send_telegram_message(chat_id, "Invalid model. Valid options: gemini, groq, openrouter, cohere")
+                                        else:
+                                            # Process through central brain
+                                            asyncio.create_task(process_message_from_client(
+                                                user_id=default_user_id,
+                                                client_type="telegram",
+                                                text=text
+                                            ))
                                     else:
                                         print(f"Unauthorized access attempt from Chat ID: {chat_id}")
                                         await send_telegram_message(chat_id, f"Unauthorized! Your Chat ID is: {chat_id}")
@@ -227,7 +260,29 @@ async def websocket_endpoint(websocket: WebSocket, secret: str = Query(default=N
                     active_connections[current_user_id]["android"] = websocket
                     active_connections[current_user_id]["capabilities"] = capabilities
                     print(f"Handshake complete for user: {current_user_id}. Capabilities: {capabilities}")
-                    
+                elif msg_type == "update_settings":
+                    preferred_model = payload.get("payload", {}).get("preferred_model")
+                    if preferred_model and current_user_id:
+                        if preferred_model in {"gemini", "groq", "openrouter", "cohere"}:
+                            memory_engine.supabase.table("user_settings").upsert({
+                                "user_id": current_user_id,
+                                "preferred_model": preferred_model
+                            }).execute()
+                            print(f"Updated preferred model for {current_user_id} to {preferred_model}")
+                            telegram_chat = active_connections.get(current_user_id, {}).get("telegram")
+                            if telegram_chat:
+                                asyncio.create_task(send_telegram_message(telegram_chat, f"[Cloud Brain] Model switched to {preferred_model.capitalize()} from Android app."))
+                
+                elif msg_type == "get_settings":
+                    if current_user_id:
+                        res = memory_engine.supabase.table("user_settings").select("preferred_model").eq("user_id", current_user_id).execute()
+                        active_model = res.data[0]["preferred_model"] if res.data else memory_engine.provider
+                        response = {
+                            "type": "settings_sync",
+                            "payload": {"preferred_model": active_model}
+                        }
+                        asyncio.create_task(websocket.send_text(json.dumps(response) if 'json' in globals() else import_json.dumps(response)))
+                                
                 elif msg_type == "user_message":
                     text = payload.get("payload", {}).get("text", "")
                     req_id = payload.get("request_id")

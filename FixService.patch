@@ -1,0 +1,17 @@
+--- app/src/main/java/com/example/service/JarvisForegroundService.kt
++++ app/src/main/java/com/example/service/JarvisForegroundService.kt
+@@ -99,6 +99,14 @@
+                     VoskManager.startWakeWordListening()
+                 }
+             }
++        }
++        
++        return START_STICKY
++    }
++
++    override fun onBind(intent: Intent?): IBinder? {
++        return null
++    }
++
+     private fun createNotificationChannel() {
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

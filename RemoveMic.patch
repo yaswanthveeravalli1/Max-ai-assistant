@@ -1,0 +1,103 @@
+--- app/src/main/java/com/example/service/JarvisForegroundService.kt
++++ app/src/main/java/com/example/service/JarvisForegroundService.kt
+@@ -104,103 +104,6 @@
+         return null
+     }
+ 
+-    private fun startMicrophoneCapture() {
+-        if (isRecording) {
+-            Log.d(TAG, "Microphone capture is already active")
+-            return
+-        }
+-
+-        val sampleRate = 16000
+-        val channelConfig = AudioFormat.CHANNEL_IN_MONO
+-        val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+-        val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+-
+-        if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
+-            Log.e(TAG, "Invalid buffer size for AudioRecord")
+-            return
+-        }
+-
+-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+-            Log.w(TAG, "RECORD_AUDIO permission is missing. Cannot start background capture.")
+-            JarvisServiceStateManager.updateAudioAmplitude(0f)
+-            return
+-        }
+-
+-        try {
+-            audioRecord = AudioRecord(
+-                MediaRecorder.AudioSource.MIC,
+-                sampleRate,
+-                channelConfig,
+-                audioFormat,
+-                bufferSize
+-            )
+-
+-            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+-                Log.e(TAG, "AudioRecord failed to initialize")
+-                return
+-            }
+-
+-            audioRecord?.startRecording()
+-            isRecording = true
+-            JarvisServiceStateManager.setListening(true)
+-
+-            recordingThread = Thread({
+-                val buffer = ShortArray(bufferSize)
+-                var lastUpdateTime = 0L
+-
+-                while (isRecording) {
+-                    val readResult = audioRecord?.read(buffer, 0, buffer.size) ?: -1
+-                    if (readResult > 0) {
+-                        val currentTime = System.currentTimeMillis()
+-                        
+-                        // Throttle UI updates to 10 FPS
+-                        if (currentTime - lastUpdateTime > 100L) {
+-                            var sum = 0.0
+-                            for (i in 0 until readResult) {
+-                                sum += buffer[i] * buffer[i]
+-                            }
+-                            val rms = Math.sqrt(sum / readResult)
+-                            JarvisServiceStateManager.updateAudioAmplitude(rms.toFloat())
+-                            lastUpdateTime = currentTime
+-                        }
+-                    } else {
+-                        // Prevent tight loop on error
+-                        try { Thread.sleep(100L) } catch (e: InterruptedException) { break }
+-                    }
+-                }
+-            }, "JarvisBackgroundMicrophoneThread")
+-            recordingThread?.start()
+-            Log.d(TAG, "Microphone capture thread started successfully")
+-        } catch (e: Exception) {
+-            Log.e(TAG, "Failed to start AudioRecord capture", e)
+-            stopMicrophoneCapture()
+-        }
+-    }
+-
+-    private fun stopMicrophoneCapture() {
+-        isRecording = false
+-        recordingThread?.interrupt()
+-        recordingThread = null
+-
+-        try {
+-            if (audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+-                audioRecord?.stop()
+-            }
+-            audioRecord?.release()
+-        } catch (e: Exception) {
+-            Log.e(TAG, "Failed to release AudioRecord resource safely", e)
+-        } finally {
+-            audioRecord = null
+-        }
+-
+-        JarvisServiceStateManager.setListening(false)
+-        JarvisServiceStateManager.updateAudioAmplitude(0f)
+-        Log.d(TAG, "Microphone capture thread stopped and resources released safely")
+-    }
+-
+     private fun createNotificationChannel() {
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+             val serviceChannel = NotificationChannel(

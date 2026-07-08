@@ -1,0 +1,40 @@
+--- app/src/main/java/com/example/ui/screens/SettingsTab.kt
++++ app/src/main/java/com/example/ui/screens/SettingsTab.kt
+@@ -1025,6 +1025,37 @@
+                 )
+             }
+         }
++        
++        // Battery Optimization
++        val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
++        val isIgnoringBatteryOptimizations = pm.isIgnoringBatteryOptimizations(context.packageName)
++        Card(
++            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
++            shape = RoundedCornerShape(16.dp),
++            modifier = Modifier.fillMaxWidth()
++        ) {
++            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
++                Text("Battery Optimization", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
++                Text(
++                    text = if (isIgnoringBatteryOptimizations) "Unrestricted 🔋✅\nYour app can run in the background freely." else "Optimized 🔋⚠️\nAndroid might kill the foreground service. Allow unrestricted usage for continuous listening.",
++                    fontSize = 13.sp,
++                    color = if (isIgnoringBatteryOptimizations) Color(0xFF00FF7F) else Color(0xFFFF003C)
++                )
++                if (!isIgnoringBatteryOptimizations) {
++                    Button(
++                        onClick = {
++                            val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
++                                data = android.net.Uri.parse("package:${context.packageName}")
++                            }
++                            context.startActivity(intent)
++                        },
++                        modifier = Modifier.fillMaxWidth()
++                    ) {
++                        Text("Disable Battery Optimization")
++                    }
++                }
++            }
++        }
+ 
+         // Advanced AI & Background Engine (JarvisForegroundService Controls)
+         Card(

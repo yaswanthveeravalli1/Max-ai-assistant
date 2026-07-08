@@ -1,0 +1,39 @@
+--- app/src/main/java/com/example/ui/screens/SettingsTab.kt
++++ app/src/main/java/com/example/ui/screens/SettingsTab.kt
+@@ -38,6 +38,7 @@
+     val isServiceRunningState = com.example.service.JarvisServiceStateManager.isServiceRunning.collectAsState()
+     val isListeningState = com.example.service.JarvisServiceStateManager.isListening.collectAsState()
+     val audioAmplitudeState = com.example.service.JarvisServiceStateManager.audioAmplitude.collectAsState()
++    val voskState = com.example.service.VoskManager.state.collectAsState()
+ 
+     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+@@ -1089,7 +1090,7 @@
+                         color = MaterialTheme.colorScheme.onSurface
+                     )
+                     Text(
+-                        text = if (isServiceRunningState.value) "Active (START_STICKY) ✅" else "Inactive (Stopped) ⚠️",
++                        text = if (isServiceRunningState.value) "Active (Vosk Offline Engine) ✅" else "Inactive (Stopped) ⚠️",
+                         style = MaterialTheme.typography.bodyMedium,
+                         fontWeight = FontWeight.Bold,
+                         color = if (isServiceRunningState.value) Color(0xFF00FF7F) else Color(0xFFFF003C)
+@@ -1099,11 +1100,11 @@
+                     modifier = Modifier.fillMaxWidth(),
+                     horizontalArrangement = Arrangement.SpaceBetween,
+                     verticalAlignment = Alignment.CenterVertically
+                 ) {
+                     Text(
+-                        text = "Microphone capture:",
++                        text = "Vosk Engine Status:",
+                         style = MaterialTheme.typography.bodyMedium,
+                         color = MaterialTheme.colorScheme.onSurface
+                     )
+                     Text(
+-                        text = if (isListeningState.value) "Listening... 🎙️" else "Muted 🔇",
++                        text = voskState.value.name,
+                         style = MaterialTheme.typography.bodyMedium,
+                         fontWeight = FontWeight.Bold,
+-                        color = if (isListeningState.value) Color(0xFF00D1FF) else Color(0xFFFF003C)
++                        color = if (voskState.value == com.example.service.VoskManager.State.LISTENING_WAKE_WORD) Color(0xFFA855F7) else Color(0xFF00D1FF)
+                     )
+                 }

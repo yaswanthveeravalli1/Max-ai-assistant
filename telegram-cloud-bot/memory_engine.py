@@ -252,7 +252,16 @@ class MemoryEngine:
         prompt = self._build_planner_prompt(context, history, text, capabilities)
 
         # 4. Generate Response
-        response_text = self._generate_response(prompt)
+        override_model = None
+        if self.supabase:
+            try:
+                res = self.supabase.table("user_settings").select("preferred_model").eq("user_id", user_id).execute()
+                if res.data:
+                    override_model = res.data[0]["preferred_model"]
+            except Exception as e:
+                print(f"Error fetching user settings: {e}")
+                
+        response_text = self._generate_response(prompt, override_model)
 
         # 5. Parse JSON decision
         import json
@@ -376,7 +385,7 @@ Respond STRICTLY with a valid JSON object in this exact format (no markdown code
         response.raise_for_status()
         return response.json()["message"]["content"][0]["text"]
 
-    def _generate_response(self, prompt: str) -> str:
+    def _generate_response(self, prompt: str, override_provider: str = None) -> str:
         """Try the configured provider, fallback to others if it fails."""
         providers = {
             "groq": self._ask_groq,
@@ -385,14 +394,10 @@ Respond STRICTLY with a valid JSON object in this exact format (no markdown code
             "cohere": self._ask_cohere
         }
 
-        # Try primary provider first
-        try:
-            return providers[self.provider](prompt)
-        except Exception as e:
-            print(f"Primary provider ({self.provider}) failed: {e}")
+        target_provider = override_provider if override_provider else self.provider
+        if not target_provider:
+            return '{"type": "chat", "text": "Error: No default AI provider is configured on the server."}'
 
-        # Fallback to other available providers
-        fallback_order = ["groq", "openrouter", "gemini", "cohere"]
         keys = {
             "groq": self.groq_key,
             "openrouter": self.openrouter_key,
@@ -400,15 +405,35 @@ Respond STRICTLY with a valid JSON object in this exact format (no markdown code
             "cohere": self.cohere_key
         }
 
-        for fallback in fallback_order:
-            if fallback != self.provider and keys.get(fallback):
-                try:
-                    print(f"Trying fallback: {fallback.upper()}")
-                    return providers[fallback](prompt)
-                except Exception as e2:
-                    print(f"Fallback {fallback} also failed: {e2}")
+        if not keys.get(target_provider):
+            return f'{{"type": "chat", "text": "Error: The API key for {target_provider.capitalize()} is not configured on the server."}}'
 
-        raise Exception("All AI providers failed.")
+        try:
+            return providers[target_provider](prompt)
+        except Exception as e:
+            print(f"Provider ({target_provider}) failed: {e}")
+            
+            # Fallback handling
+            fallback_order = ["groq", "openrouter", "gemini", "cohere"]
+            for fallback in fallback_order:
+                if fallback != target_provider and keys.get(fallback):
+                    try:
+                        print(f"Trying fallback: {fallback.upper()}")
+                        res = providers[fallback](prompt)
+                        import json
+                        try:
+                            # Try to inject the notice into the JSON response safely
+                            clean_text = res.replace("```json", "").replace("```", "").strip()
+                            decision = json.loads(clean_text)
+                            if decision.get("type") == "chat":
+                                decision["text"] = f"[Note: {target_provider.capitalize()} unavailable, used {fallback.capitalize()} instead]\n\n" + decision.get("text", "")
+                            return json.dumps(decision)
+                        except:
+                            return res
+                    except Exception as e2:
+                        print(f"Fallback {fallback} also failed: {e2}")
+
+            return f'{{"type": "chat", "text": "Error: {target_provider.capitalize()} failed and no fallback models were available."}}'
 
     # ── Main query method ──────────────────────────────────────────────
 

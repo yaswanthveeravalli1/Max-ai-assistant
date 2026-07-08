@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">MAX</string>
+    <string name="accessibility_service_description">
+        MAX uses this permission to read on-screen content and perform taps on your
+        behalf, only when you explicitly trigger an automation. It does not run in the
+        background without your action and is not used to monitor or collect your data.
+    </string>
+</resources>

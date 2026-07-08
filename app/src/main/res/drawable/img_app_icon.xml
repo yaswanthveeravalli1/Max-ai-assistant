@@ -1,0 +1,125 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background: Deep dark gradient circle -->
+    <path
+        android:fillColor="#0B0F19"
+        android:pathData="M54,54m-45,0a45,45 0,1 1,90 0a45,45 0,1 1,-90 0" />
+
+    <!-- Hair (Back): Deep auburn red silhouette background behind neck and shoulders -->
+    <path
+        android:fillColor="#802612"
+        android:pathData="M34,42 C26,55 24,75 28,88 L80,88 C84,75 82,55 74,42 Z" />
+
+    <!-- Shoulders/Chest: Pale skin tone -->
+    <path
+        android:fillColor="#FBE0D3"
+        android:pathData="M32,84 C32,74 44,70 54,70 C64,70 76,74 76,84 L76,92 L32,92 Z" />
+
+    <!-- Neck: Pale skin tone -->
+    <path
+        android:fillColor="#F6CBB7"
+        android:pathData="M48,58 L48,72 C48,72 50,75 54,75 C58,75 60,72 60,72 L60,58 Z" />
+
+    <!-- Dress (Elegant sage/olive green strapless top) -->
+    <path
+        android:fillColor="#4F6D59"
+        android:pathData="M32,82 C32,82 40,78 54,81 C68,78 76,82 76,82 L76,92 L32,92 Z" />
+    
+    <!-- Dress Ribbon Detail (Sage/olive green) -->
+    <path
+        android:fillColor="#6B8D76"
+        android:pathData="M54,81 L60,86 L57,88 L51,84 Z" />
+
+    <!-- Face: Pale skin tone -->
+    <path
+        android:fillColor="#FBE0D3"
+        android:pathData="M54,34 C43,34 41,44 41,52 C41,60 47,64 54,64 C61,64 67,60 67,52 C67,44 65,34 54,34 Z" />
+
+    <!-- Cheeks shadow / blush -->
+    <path
+        android:fillColor="#EFAEA0"
+        android:pathData="M42,54 C42,57 45,58 47,56 C47,54 44,52 42,54 Z" />
+    <path
+        android:fillColor="#EFAEA0"
+        android:pathData="M66,54 C66,52 63,52 61,54 C59,56 62,58 66,54 Z" />
+
+    <!-- Eyes: Beautiful blue eyes -->
+    <!-- Left Eye -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,49 C47,48 49,48 50,49 C49,50 47,51 45,49 Z" />
+    <path
+        android:fillColor="#3A7EA6"
+        android:pathData="M47,49m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M47.2,49m-0.6,0a0.6,0.6 0,1 1,1.2 0a0.6,0.6 0,1 1,-1.2 0" />
+
+    <!-- Right Eye -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,49 C59,48 61,48 63,49 C61,51 59,50 58,49 Z" />
+    <path
+        android:fillColor="#3A7EA6"
+        android:pathData="M60.5,49m-1.5,0a1.5,1.5 0,1 1,3 0a1.5,1.5 0,1 1,-3 0" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M60.7,49m-0.6,0a0.6,0.6 0,1 1,1.2 0a0.6,0.6 0,1 1,-1.2 0" />
+
+    <!-- Eyebrows (Light auburn) -->
+    <path
+        android:fillColor="#802612"
+        android:pathData="M44,46 C46,45 48,46 51,47 C48,46 46,46 44,46 Z" />
+    <path
+        android:fillColor="#802612"
+        android:pathData="M64,46 C62,45 60,46 57,47 C60,46 62,46 64,46 Z" />
+
+    <!-- Lips (Soft rose red) -->
+    <path
+        android:fillColor="#B54A56"
+        android:pathData="M50,58 C50,58 52,60 54,60 C56,60 58,58 58,58 C58,58 56,59 54,59 C52,59 50,58 50,58 Z" />
+
+    <!-- Nose shadow -->
+    <path
+        android:fillColor="#F6CBB7"
+        android:pathData="M53,50 L53,54 L55,54 Z" />
+
+    <!-- Hair (Front/Bangs/Sides): Rich wavy red-auburn hair framing the face -->
+    <path
+        android:fillColor="#AC341A"
+        android:pathData="M54,30 C38,30 38,42 38,48 C38,54 39,58 40,64 C42,60 43,44 54,42 C65,44 66,60 68,64 C69,58 70,54 70,48 C70,42 70,30 54,30 Z" />
+
+    <!-- Highlights in hair for depth (Lighter auburn red) -->
+    <path
+        android:fillColor="#D85D40"
+        android:pathData="M48,32 C42,35 41,40 41,45 C42,42 45,36 48,35 Z" />
+    <path
+        android:fillColor="#D85D40"
+        android:pathData="M60,32 C66,35 67,40 67,45 C66,42 63,36 60,35 Z" />
+    
+    <!-- Fine detail: Hair strands framing face sides -->
+    <path
+        android:fillColor="#AC341A"
+        android:pathData="M39,48 C36,58 35,68 36,78 C38,72 39,64 40,54 Z" />
+    <path
+        android:fillColor="#AC341A"
+        android:pathData="M69,48 C72,58 73,68 72,78 C70,72 69,64 68,54 Z" />
+
+    <!-- Necklace (Elegant silver chain with dynamic drop) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M46,65 C48,70 60,70 62,65 C60,72 48,72 46,65 Z" />
+    
+    <!-- Necklace Pendant (Silver with diamond sparkle) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M54,71 L56,73 L54,75 L52,73 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,72 L55,73 L54,74 L53,73 Z" />
+
+</vector>
