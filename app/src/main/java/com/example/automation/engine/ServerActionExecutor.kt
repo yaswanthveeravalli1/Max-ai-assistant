@@ -9,6 +9,14 @@ import org.json.JSONObject
 object ServerActionExecutor {
     private const val TAG = "ServerActionExecutor"
 
+    private val ALLOWED_ACTIONS = setOf(
+        "FLASHLIGHT_ON", "FLASHLIGHT_OFF", "WIFI_SETTINGS",
+        "OPEN_APP", "CALL_PHONE", "SEND_MESSAGE",
+        "SET_REMINDER", "GET_TIME", "SYSTEM_ACTION",
+        "PERFORM_BACK", "PERFORM_HOME", "PERFORM_RECENT_APPS",
+        "TAKE_SCREENSHOT"
+    )
+
     fun execute(context: Context, requestJson: JSONObject) {
         val requestId = requestJson.optString("request_id")
         val payload = requestJson.optJSONObject("payload")
@@ -26,6 +34,16 @@ object ServerActionExecutor {
             val actionId = actionItem.optString("action_id", "act_$i")
             val actionName = actionItem.optString("action", "NONE")
             val params = actionItem.optJSONObject("params") ?: JSONObject()
+
+            if (!ALLOWED_ACTIONS.contains(actionName.uppercase())) {
+                Log.w(TAG, "Server requested unsupported action: $actionName")
+                val res = JSONObject()
+                res.put("action_id", actionId)
+                res.put("status", "unsupported")
+                res.put("error", "Action not in allowlist")
+                resultsArray.put(res)
+                continue
+            }
 
             try {
                 Log.d(TAG, "Executing Action from Server: $actionName")

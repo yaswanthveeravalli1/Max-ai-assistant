@@ -17,7 +17,9 @@ APP_SECRET = os.getenv("APP_SECRET", "default_secret_key")
 
 # Connection registry
 # Format: user_id -> {"android": WebSocket, "telegram": chat_id, "capabilities": [...]}
+# Global state
 active_connections: Dict[str, Dict[str, Any]] = {}
+pending_actions: Dict[str, asyncio.Future] = {}
 
 async def send_telegram_message(chat_id: str, text: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -66,11 +68,31 @@ async def process_message_from_client(user_id: str, client_type: str, text: str,
             }
         }
         try:
+            # Create a future to wait for the action_result
+            future = asyncio.get_running_loop().create_future()
+            pending_actions[request_id] = future
+            
             await android_ws.send_text(json.dumps(action_req))
-            print(f"Sent action_request to Android for {user_id}")
+            print(f"Sent action_request to Android for {user_id}. Waiting for result...")
+            
+            # Wait for action_result with a 15-second timeout
+            result_payload = await asyncio.wait_for(future, timeout=15.0)
+            status = result_payload.get("results", [{}])[0].get("status", "unknown")
+            if status == "success":
+                pass # reply_text is already correct
+            else:
+                error_msg = result_payload.get("results", [{}])[0].get("error", "Unknown error")
+                reply_text += f"\n[Action failed: {error_msg}]"
+                
+        except asyncio.TimeoutError:
+            print(f"Action {request_id} timed out")
+            reply_text = "I sent the command, but the phone timed out before confirming."
         except Exception as e:
             print(f"Failed to send action to Android: {e}")
             reply_text = "I tried to perform the action, but your phone seems disconnected."
+        finally:
+            pending_actions.pop(request_id, None)
+            
     elif reply_type == "action" and not android_ws:
         # Planner output action but phone is not connected (capability mismatch catch-all)
         reply_text = "I cannot perform that action right now because your phone is offline."
@@ -184,6 +206,12 @@ async def websocket_endpoint(websocket: WebSocket, secret: str = Query(default=N
                 if msg_type == "handshake":
                     current_user_id = payload.get("user_id", "default_user")
                     capabilities = payload.get("capabilities", [])
+                    auth_token = payload.get("auth_token")
+                    
+                    if auth_token != APP_SECRET:
+                        print(f"Invalid auth_token in handshake for user {current_user_id}")
+                        await websocket.close(code=1008, reason="Invalid Auth Token")
+                        return
                     
                     if current_user_id not in active_connections:
                         active_connections[current_user_id] = {}
@@ -213,7 +241,11 @@ async def websocket_endpoint(websocket: WebSocket, secret: str = Query(default=N
                         
                 elif msg_type == "action_result":
                     print(f"Action result from {current_user_id}: {payload}")
-                    # TODO: Phase 2 action correlation
+                    req_id = payload.get("request_id")
+                    if req_id and req_id in pending_actions:
+                        future = pending_actions[req_id]
+                        if not future.done():
+                            future.set_result(payload.get("payload", {}))
                     
                 elif msg_type == "pong":
                     pass # Heartbeat response
