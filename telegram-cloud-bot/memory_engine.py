@@ -64,7 +64,7 @@ class MemoryEngine:
             batch_num = i // batch_size + 1
             print(f"  Embedding batch {batch_num}/{total_batches} ({len(batch)} texts)...")
             result = self.gemini_client.models.embed_content(
-                model='text-embedding-004',
+                model='gemini-embedding-001',
                 contents=batch
             )
             for emb in result.embeddings:
