@@ -35,19 +35,50 @@ async def process_message_from_client(user_id: str, client_type: str, text: str,
         
     print(f"[{client_type.upper()}] user:{user_id} req:{request_id} -> {text}")
     
-    # Send to AI brain (MemoryEngine)
-    reply_text = await asyncio.to_thread(memory_engine.answer_question, text)
-    
     conn = active_connections.get(user_id, {})
     android_ws = conn.get("android")
     telegram_chat = conn.get("telegram")
+    capabilities = conn.get("capabilities", [])
     
-    # Determine where to send the final response
+    # Send to AI brain (Planner)
+    reply_dict = await asyncio.to_thread(memory_engine.process_request, user_id, text, capabilities)
+    
+    reply_type = reply_dict.get("type", "chat")
+    reply_text = reply_dict.get("text", "")
+    
+    # If the response dictates an action, we MUST route it to the Android client
+    if reply_type == "action" and android_ws:
+        action_name = reply_dict.get("action_id", "NONE")
+        params = reply_dict.get("params", {})
+        
+        action_req = {
+            "type": "action_request",
+            "request_id": request_id,
+            "user_id": user_id,
+            "payload": {
+                "actions": [
+                    {
+                        "action_id": f"act_{uuid.uuid4().hex[:8]}",
+                        "action": action_name,
+                        "params": params
+                    }
+                ]
+            }
+        }
+        try:
+            await android_ws.send_text(json.dumps(action_req))
+            print(f"Sent action_request to Android for {user_id}")
+        except Exception as e:
+            print(f"Failed to send action to Android: {e}")
+            reply_text = "I tried to perform the action, but your phone seems disconnected."
+    elif reply_type == "action" and not android_ws:
+        # Planner output action but phone is not connected (capability mismatch catch-all)
+        reply_text = "I cannot perform that action right now because your phone is offline."
+
+    # Determine where to send the final conversational response
     if client_type == "telegram":
-        # Reply to Telegram
         await send_telegram_message(telegram_chat or TELEGRAM_CHAT_ID, f"[Cloud Brain] {reply_text}")
     elif client_type == "android":
-        # Reply to Android
         if android_ws:
             final_response = {
                 "type": "final_response",
@@ -59,13 +90,9 @@ async def process_message_from_client(user_id: str, client_type: str, text: str,
                 }
             }
             try:
-                # If we received JSON, we reply with JSON.
-                # However, if it's the old app, it will fail to parse the JSON.
-                # Since we are implementing Phase 1, we will send JSON. We will fix the Android app in Phase 2.
                 await android_ws.send_text(json.dumps(final_response))
             except Exception as e:
-                print(f"Failed to send to Android: {e}")
-                # Fallback to Telegram if Android died mid-request
+                print(f"Failed to send final_response to Android: {e}")
                 if telegram_chat or TELEGRAM_CHAT_ID:
                     await send_telegram_message(telegram_chat or TELEGRAM_CHAT_ID, f"[Android Offline] {reply_text}")
 

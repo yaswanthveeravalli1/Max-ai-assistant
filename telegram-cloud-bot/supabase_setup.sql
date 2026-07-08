@@ -1,12 +1,12 @@
 -- ============================================
 -- Supabase Setup for MAX Cloud Bot Memory
--- Run this in Supabase SQL Editor (one-time)
+-- Run this in Supabase SQL Editor
 -- ============================================
 
 -- 1. Enable pgvector extension
 create extension if not exists vector;
 
--- 2. Create memory chunks table
+-- 2. Create memory chunks table (Long Term Memory)
 create table if not exists memory_chunks (
   id bigserial primary key,
   content text not null,
@@ -47,3 +47,19 @@ begin
   limit match_count;
 end;
 $$;
+
+-- 5. Create chat history table (Short Term Memory)
+create table if not exists chat_history (
+  id bigserial primary key,
+  user_id text not null,
+  role text not null, -- 'user' or 'assistant'
+  content text not null,
+  created_at timestamptz default now()
+);
+
+-- 6. Create user summaries table (Rolling context)
+create table if not exists user_summaries (
+  user_id text primary key,
+  summary text not null,
+  last_updated timestamptz default now()
+);

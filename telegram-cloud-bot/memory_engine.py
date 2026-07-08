@@ -188,20 +188,126 @@ class MemoryEngine:
         self.last_error = "Success"
         print(f"Memory seeded! {len(all_chunks)} chunks stored in Supabase.")
 
+    # ── Core AI Logic (Legacy) ─────────────────────────────────────────
+
+    def answer_question(self, question: str) -> str:
+        """Legacy method for backward compatibility if needed."""
+        return self.process_request("default_user", question, [])["text"]
+
+    # ── Planner & Memory Management (Phase 1.5) ─────────────────────────
+
+    def save_chat_message(self, user_id: str, role: str, content: str):
+        if not self.supabase:
+            return
+        try:
+            self.supabase.table("chat_history").insert({
+                "user_id": user_id,
+                "role": role,
+                "content": content
+            }).execute()
+        except Exception as e:
+            print(f"Error saving chat: {e}")
+
+    def get_chat_history(self, user_id: str, limit: int = 10) -> str:
+        if not self.supabase:
+            return ""
+        try:
+            response = self.supabase.table("chat_history").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+            if response.data:
+                messages = response.data
+                messages.reverse()
+                history = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])
+                return history
+            return ""
+        except Exception as e:
+            print(f"Error getting history: {e}")
+            return ""
+
+    def process_request(self, user_id: str, text: str, capabilities: list) -> dict:
+        """
+        Planner function. Classifies intent, retrieves memory and history,
+        and returns a decision dict with type 'chat' or 'action'.
+        """
+        if not self.is_ready:
+            print(f"MemoryEngine not ready. Error: {self.last_error}")
+            # Still generate a response using LLM without memory
+            context = ""
+        else:
+            # 1. Retrieve Semantic Memory (RAG)
+            context = ""
+            if self.gemini_client:
+                try:
+                    emb = self._get_embedding(text)
+                    matches = self.supabase.rpc("match_memory", {"query_embedding": str(emb), "match_count": 5}).execute()
+                    if matches.data:
+                        context = "\n".join([m["content"] for m in matches.data])
+                except Exception as e:
+                    print(f"Error matching memory: {e}")
+
+        # 2. Save user message and get chat history
+        self.save_chat_message(user_id, "user", text)
+        history = self.get_chat_history(user_id, limit=8)
+
+        # 3. Construct Planner Prompt
+        prompt = self._build_planner_prompt(context, history, text, capabilities)
+
+        # 4. Generate Response
+        response_text = self._generate_response(prompt)
+
+        # 5. Parse JSON decision
+        import json
+        try:
+            clean_text = response_text.replace("```json", "").replace("```", "").strip()
+            decision = json.loads(clean_text)
+            
+            # Save the text response to history
+            reply_text = decision.get("text", "")
+            if reply_text:
+                self.save_chat_message(user_id, "assistant", reply_text)
+                
+            return decision
+        except Exception as e:
+            print(f"Failed to parse Planner JSON: {response_text}, Error: {e}")
+            fallback_text = "I processed your request, but there was an error figuring out the exact action."
+            self.save_chat_message(user_id, "assistant", fallback_text)
+            return {"type": "chat", "text": fallback_text}
+
     # ── Prompt construction ────────────────────────────────────────────
 
-    def _build_prompt(self, context: str, question: str) -> str:
-        return f"""You are MAX, a highly capable, intelligent personal AI assistant. 
-Currently, the user's phone is offline, so you are responding in Cloud Mode based on the user's external memory.
-Use the following context to answer the user's question accurately and naturally.
-If the answer is not in the context, say you don't have that info in your current memory.
-Keep responses concise and helpful.
+    def _build_planner_prompt(self, context: str, history: str, question: str, capabilities: list) -> str:
+        return f"""You are MAX, a highly capable AI assistant.
+The user has sent a request. You must determine if you should respond with just text (CHAT) or if you need to execute a device action (ACTION).
+The target device currently has the following capabilities: {capabilities}
 
-Context from memory:
+RULES:
+1. If the user asks for a device action (e.g. turn on flashlight, send message) AND the required capability is in the list above, output an ACTION.
+2. If the user asks for an action but the capability is NOT in the list, tell the user you cannot do it on this client. Output CHAT.
+3. If it is a general question or conversational, output CHAT.
+4. Keep the "text" field concise and natural.
+
+Available Action IDs (if ACTION):
+- FLASHLIGHT_ON (no params)
+- FLASHLIGHT_OFF (no params)
+- SEND_MESSAGE (params: {{"contact": "...", "message": "..."}})
+- CALL_PHONE (params: {{"contact": "..."}})
+- OPEN_APP (params: {{"appName": "..."}})
+
+Context from long-term memory:
 {context}
 
-User Question:
-{question}"""
+Recent conversation history:
+{history}
+
+User Request: {question}
+
+Respond STRICTLY with a valid JSON object in this exact format (no markdown code blocks, just raw JSON text):
+{{
+  "type": "chat" or "action",
+  "text": "Your natural language response to the user",
+  "action_id": "The action ID if type is action, else null",
+  "params": {{}}
+}}
+"""
 
     # ── AI provider methods ────────────────────────────────────────────
 
